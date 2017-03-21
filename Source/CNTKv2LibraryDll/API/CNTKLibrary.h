@@ -563,6 +563,7 @@ namespace CNTK
         ///
         CNTK_API NDArrayView(::CNTK::DataType dataType, const NDShape& viewShape, void* dataBuffer, size_t bufferSizeInBytes, const DeviceDescriptor& device, bool readOnly = false);
 
+        ///
         /// Construct a read-only NDArrayView with the specified 'dataBuffer' as the backing storage.
         /// The 'dataBuffer' must have been allocated on the specified 'device', must be at least
         /// as large as the total size of the specified 'viewShape' and must outlive the created NDArrayView object.
@@ -573,7 +574,7 @@ namespace CNTK
 
         ///
         /// Construct a NDArrayView with newly allocated sparse storage in SparseCSC format on the specified 'device' and initialize its contents
-        // with the specified Sparse CSC format data.
+        /// with the specified Sparse CSC format data.
         ///
         template <typename ElementType>
         CNTK_API NDArrayView(const NDShape& viewShape, const SparseIndexType* colStarts, const SparseIndexType* rowIndices, const ElementType* nonZeroValues, size_t numNonZeroValues, const DeviceDescriptor& device, bool readOnly = false);
@@ -686,6 +687,12 @@ namespace CNTK
         /// 
         template <typename ElementType>
         CNTK_API const ElementType* DataBuffer() const;
+
+        ///
+        /// Returns a read-only pointer to the data buffer in sparse CSC format underlying 'this' view
+        /// 
+        template <typename ElementType>
+        CNTK_API const std::tuple<const ElementType *, const SparseIndexType*, const SparseIndexType*, size_t numNonZeroValues> SparseCSCDataBuffers() const;
 
         ///
         /// Returns the descriptor of the device that 'this' view resides on

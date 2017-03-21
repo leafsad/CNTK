@@ -418,12 +418,39 @@ namespace CNTK
             InvalidArgument("NDArrayView::DataBuffer: The specified ElementType '%s' does not match this NDArrayView's DataType '%s'.", typeid(ElementType).name(), DataTypeName(m_dataType));
 
         if (IsSparse())
-            InvalidArgument("DataBuffer/WritableDataBuffer methods not supported for sparse NDArrayiew objects.");
+            InvalidArgument("The stroage format of 'this' NDArrayView is sparse. Please use SparseDataBuffers().");
 
         // First make sure that the underlying matrix is on the right device
         auto matrix = GetMatrix<ElementType>();
         matrix->TransferToDeviceIfNotThere(AsCNTKImplDeviceId(m_device), true);
         return matrix->Data();
+    }
+
+    template <typename ElementType>
+    const std::tuple<const ElementType *, const SparseIndexType*, const SparseIndexType*, size_t numNonZeroValues> SparseCSCDataBuffers() const
+    {
+        if (AsDataType<ElementType>() != m_dataType)
+            InvalidArgument("NDArrayView::SparseDataBuffers: The specified ElementType '%s' does not match this NDArrayView's DataType '%s'.", typeid(ElementType).name(), DataTypeName(m_dataType));
+
+        if (!IsSparse())
+            InvalidArgument("The stroage format of 'this' NDArrayView is dense. Please use another DataBuffer().");
+
+        if(GetStorageFormat() != StorageFormat::SparseCSC)
+            InvalidArgument("The SparseDataBuffers() method currently only supports CSC sparse format.");
+
+        auto matrix = GetMatrix<ElementType>();
+        matrix->TransferToDeviceIfNotThere(AsCNTKImplDeviceId(m_device), true);
+
+        if ((matrix->GetMatrixType() != Microsoft::MSR::CNTK::MatrixType::SPARSE) || (matrix->GetMatrixFormat() != Microsoft::MSR::CNTK::MatrixFormat::matrixFormatSparseCSC))
+            RuntimeError("The underlying matrix of 'this' NDArrayView is not in the CSC sparse format.");
+
+        shared_ptr<Microsoft::MSR::CNTK::CPUSparseMatrix<ElementType>> sparseMatrix = matrix->m_CPUSparseMatrix;
+        size_t numNonZeroValues = sparseMatrix->NzCount();
+        ElementType* nonZeroValues = sparseMatrix->NzValues();
+        SparseIndexType* colStarts = sparseMatrix->ColLocation();
+        SparseIndexType* rowIndices = sparseMatrix->RowLocation();
+
+        return std::tuple(nonZeroValues, colStarts, rowIndices, numNonZeroValues);
     }
 
     void NDArrayView::ChangeDevice(const DeviceDescriptor& device)
