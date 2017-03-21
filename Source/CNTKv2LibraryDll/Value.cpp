@@ -657,7 +657,7 @@ namespace CNTK
         shared_ptr<CPUSparseMatrix<ElementType>> valueSparseMatrix = valueMatrix->m_CPUSparseMatrix;
         if ((valueSparseMatrix->NzCount() != nonZeroValues.size()) ||
             (valueSparseMatrix->ColSize() != colStarts().size() * sizeof(SparseIndexType)) || 
-            (valueSparseMatrix->RowSize() != rowIndices().size() * sizeof(SparseIndexType))
+            (valueSparseMatrix->RowSize() != rowIndices().size() * sizeof(SparseIndexType)))
             RuntimeError("The size of index vectors does not match that in 'this' Value.");
 
         memcpy(nonZeroValues.data(), valueSparseMatrix->NzValues(), valueSparseMatrix->NzSize());

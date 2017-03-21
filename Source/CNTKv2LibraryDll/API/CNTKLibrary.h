@@ -692,7 +692,7 @@ namespace CNTK
         /// Returns a read-only pointer to the data buffer in sparse CSC format underlying 'this' view
         /// 
         template <typename ElementType>
-        CNTK_API const std::tuple<const ElementType *, const SparseIndexType*, const SparseIndexType*, size_t numNonZeroValues> SparseCSCDataBuffers() const;
+        CNTK_API std::tuple<const ElementType *, const SparseIndexType*, const SparseIndexType*, size_t> SparseCSCDataBuffers() const;
 
         ///
         /// Returns the descriptor of the device that 'this' view resides on
