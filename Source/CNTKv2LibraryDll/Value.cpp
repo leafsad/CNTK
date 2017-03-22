@@ -635,7 +635,7 @@ namespace CNTK
 
         memcpy(nonZeroValues.data(), rawNonZeroValues, numNonZeroValues * sizeof(ElementType));
         memcpy(colStarts.data(), rawColStarts, numNonZeroValues * sizeof(SparseIndexType));
-        memcpy(rowIndices.data(), rawRowIndices, sequenceLength * sizeof(SparseIndexType) )
+        memcpy(rowIndices.data(), rawRowIndices, (sequenceLength + 1) * sizeof(SparseIndexType) )
     }
 
 
