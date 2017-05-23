@@ -22,9 +22,6 @@ static void operator||(cudaError_t rc, const char *msg)
 NcclComm::NcclComm(int deviceId, const MPIWrapperPtr& mpi)
     : m_ncclComm(nullptr), m_stream(nullptr)
 {
-    if (mpi->IsMultiHost())
-        return;
-
     size_t numRanks = mpi->NumNodesInUse();
     std::vector<int> allDevs(numRanks);
     mpi->Allgather(&deviceId, 1, MPI_INT, allDevs.data(), 1, MPI_INT);

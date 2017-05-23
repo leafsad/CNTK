@@ -25,8 +25,18 @@ class SimpleDistGradAggregator : public IDistGradAggregator<ElemType>
 public:
     SimpleDistGradAggregator(const MPIWrapperPtr& mpi, bool useAsyncAggregation, int deviceId, int syncStatsTrace, size_t packThresholdSizeInBytes = DEFAULT_PACK_THRESHOLD_SIZE_IN_BYTES)
         : IDistGradAggregator<ElemType>(mpi), m_useAsyncAggregation(useAsyncAggregation), m_initialized(false), m_bufferedGradHeader(nullptr), m_syncStatsTrace(syncStatsTrace),
-        m_iterationCount(0), m_nccl(deviceId, mpi), m_packThresholdSizeInBytes(packThresholdSizeInBytes)
-    {}
+        m_iterationCount(0), m_packThresholdSizeInBytes(packThresholdSizeInBytes)
+    {
+        // Create NcclComm
+        int numHosts = mpi->NumNodesInUse();
+        for (int i = 0; i < numHosts; ++i)
+            // This would create nullptr array
+            m_nccl.push_back(NcclComm(deviceId, mpi));
+        int hostId = mpi->CurrentNodeRank();
+        // Use m_rankId as deviceId, as we know each GPU has one process.
+        NcclComm ncclPerNode = NcclComm(mpi->LocalRankId(), mpi);
+        m_nccl[hostId] = ncclPerNode;
+    }
 
     ~SimpleDistGradAggregator()
     {
@@ -145,7 +155,7 @@ private:
             return false;
 
         // Do not copy if NCCL is supported or GPUDirect RDMA is used
-        if (m_nccl.IsSupported() || m_mpi->UseGpuGdr() == true)
+        if (m_nccl[0].IsSupported() || m_mpi->UseGpuGdr() == true)
             return false;
 
         return true;
@@ -328,7 +338,7 @@ private:
 
         // Perform async allreduce on the gradient data
         std::vector<MPI_Request> allReduceRequests;
-        if (!m_nccl.IsSupported())
+        if (!m_nccl[0].IsSupported())
         {
             size_t allReduceIndex = 0;
             ElemType* reductionBuffer;
@@ -362,7 +372,18 @@ private:
             {
                 ncclReduceGradients.push_back((i == -1) ? m_aggregationBuffer.get() : gradients[i]);
             }
-            m_nccl.AllReduce(ncclReduceGradients);
+            m_nccl[m_mpi->CurrentNodeRank()].AllReduce(ncclReduceGradients);
+            // Reduce between nodes, rank 0 on each node does allreduce between nodes then broadcast within node
+            ElemType* reductionBuffer;
+            if (m_mpi->LocalRankId() == 0)
+            {
+                for (size_t i : m_gradientIndexToAggregate)
+                {
+                    reductionBuffer = (i == -1)? m_aggregationBuffer->Data() : gradients[i]->Data();
+                    m_mpi->AllReduce(reductionBuffer, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements());
+                    m_nccl[m_mpi->CurrentNodeRank()].Broadcast(reductionBuffer, (i == -1) ? m_aggregationBuffer->GetNumElements() : gradients[i]->GetNumElements(), MPI_DOUBLE, 0);
+                }
+            }
         }
 
         // On the main node wait for the headers to arrive and aggregate
@@ -389,9 +410,10 @@ private:
         // Broadcast the aggregated header to all nodes
         m_mpi->Bcast(headerCPU, headerCPU->Size(), MPI_CHAR, m_mpi->MainNodeRank());
 
-        if (m_nccl.IsSupported())
+        if (m_nccl[0].IsSupported())
         {
-            m_nccl.Sync();
+            for (size_t i = 0; i < m_nccl.size(); i++)
+                m_nccl[i].Sync();
         }
         // TODO: Remove this when MPI_Iallreduce with CUDA-aware is supported 
         else if (m_mpi->UseGpuGdr() == 0)
@@ -470,6 +492,6 @@ private:
 
     bool m_initialized;
 
-    NcclComm m_nccl;
+    std::vector<NcclComm> m_nccl;
 };
 } } }

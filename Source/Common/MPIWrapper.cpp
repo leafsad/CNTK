@@ -70,6 +70,7 @@ public:
     bool UsingAllNodes() const;
     size_t MainNodeRank() const;
     bool IsMultiHost() const;
+    size_t LocalRankId() const;
 
     // Use GPUDirect RDMA support
     virtual bool UseGpuGdr() override;
@@ -168,6 +169,7 @@ public:
     bool UsingAllNodes() const;
     size_t MainNodeRank() const;
     bool IsMultiHost() const;
+    size_t LocalRankId() const;
     // Use GPUDirect RDMA
     virtual bool UseGpuGdr() override;
 
@@ -727,6 +729,11 @@ size_t MPIWrapperMpi::MainNodeRank() const
     return 0;
 }
 
+size_t MPIWrapperMpi::LocalRankId() const
+{
+    return m_myRank % m_numNodesInUse;
+}
+
 // allreduce of a vector
 void MPIWrapperMpi::AllReduce(std::vector<size_t>& accumulator) const
 {
@@ -1088,6 +1095,11 @@ std::wstring MPIWrapperEmpty::CurrentNodeName() const
 bool MPIWrapperEmpty::IsMainNode() const
 {
     return true;
+}
+
+size_t MPIWrapperEmpty::LocalRankId() const
+{
+    return 0;
 }
 
 bool MPIWrapperEmpty::IsIdle() const

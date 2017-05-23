@@ -95,6 +95,7 @@ public:
     virtual bool UsingAllNodes() const = 0;
     virtual size_t MainNodeRank() const = 0;
     virtual bool IsMultiHost() const = 0;
+    virtual size_t LocalRankId() const = 0;
 
     // Use GPUDirect RDMA support
     virtual bool UseGpuGdr() = 0;
