@@ -88,6 +88,7 @@ public:
     static int GetTotalNumberOfMPINodes();
 
     virtual size_t NumNodesInUse() const = 0;
+    virtual size_t NumHostsInUse() const = 0;
     virtual size_t CurrentNodeRank() const = 0;
     virtual bool IsMainNode() const = 0;
     virtual std::wstring CurrentNodeName() const = 0;

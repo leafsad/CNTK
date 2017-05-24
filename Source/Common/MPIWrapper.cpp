@@ -29,6 +29,7 @@ class MPIWrapperMpi : public MPIWrapper
     int m_numMPINodes;
     size_t m_numNodesInUse;
     bool m_multiHost;
+    size_t m_numHostsInUse;
 
     // MPI communicator that reflects the current subset selection
     MPI_Comm m_currentComm;
@@ -63,6 +64,7 @@ private:
 public:
 
     size_t NumNodesInUse() const;
+    size_t NumHostsInUse() const;
     size_t CurrentNodeRank() const;
     bool IsMainNode() const;
     std::wstring CurrentNodeName() const;
@@ -162,6 +164,7 @@ public:
     ~MPIWrapperEmpty();
 
     size_t NumNodesInUse() const;
+    size_t NumHostsInUse() const;
     size_t CurrentNodeRank() const;
     bool IsMainNode() const;
     std::wstring CurrentNodeName() const;
@@ -415,6 +418,7 @@ MPIWrapperMpi::MPIWrapperMpi()
     MPI_Comm_size(MPI_COMM_WORLD, &m_numMPINodes);
     m_numNodesInUse = m_numMPINodes;
     m_multiHost = true;
+    m_numHostsInUse = 1;
 
     // Verify that the environment variable used by GetTotalNumberOfMPINodes()  
     // matches what the MPI API says. There're actually two possible cases:
@@ -597,11 +601,13 @@ void MPIWrapperMpi::RequestNodes(const char *msg, size_t requestednodes /*defaul
         || MpiFail("requestnodes: MPI_Allgather");
 
     m_multiHost = false;
-    for (size_t i = 1; i<m_numNodesInUse; i++)
+    m_numHostsInUse = 1;
+    for (size_t i = 1; i < m_numNodesInUse; i++)
     {
         if (strcmp(allNames, allNames + i*nameMax) != 0)
         {
             m_multiHost = true;
+            m_numHostsInUse = m_numNodesInUse / (i + 1);
             break;
         }
     }
@@ -697,6 +703,11 @@ bool MPIWrapperMpi::UseGpuGdr()
 size_t MPIWrapperMpi::NumNodesInUse() const
 {
     return m_numNodesInUse;
+}
+
+size_t MPIWrapperMpi::NumHostsInUse() const
+{
+    return m_numHostsInUse;
 }
 
 size_t MPIWrapperMpi::CurrentNodeRank() const
@@ -1078,6 +1089,11 @@ int MPIWrapperEmpty::Error_string(int errorcode, char* str, int* resultlen)
 }
 
 size_t MPIWrapperEmpty::NumNodesInUse() const
+{
+    return 1;
+}
+
+size_t MPIWrapperEmpty::NumHostsInUse() const
 {
     return 1;
 }
