@@ -4,6 +4,7 @@
 //
 #include "Include/Basics.h"
 #include "Include/MPIWrapper.h"
+#include <unordered_set>
 
 #if HAS_MPI
 #pragma comment(lib, "msmpi.lib")
@@ -601,16 +602,18 @@ void MPIWrapperMpi::RequestNodes(const char *msg, size_t requestednodes /*defaul
         || MpiFail("requestnodes: MPI_Allgather");
 
     m_multiHost = false;
-    m_numHostsInUse = 1;
+    m_numHostsInUse = 0;
+    std::unordered_set<std::string> hostNames;
     for (size_t i = 1; i < m_numNodesInUse; i++)
     {
-        if (strcmp(allNames, allNames + i*nameMax) != 0)
+        if (hostNames.find(allNames + i*nameMax) == hostNames.end())
         {
             m_multiHost = true;
-            m_numHostsInUse = m_numNodesInUse / (i + 1);
-            break;
+            m_numHostsInUse++;
+            hostNames.insert(allNames + i*nameMax);
         }
     }
+    assert(m_numHostsInUse > 0);
 
     fprintf(stderr, "requestnodes [%s]: using %d out of %d MPI nodes on %s (%d requested); we (%d) are %s\n",
         msg, (int)m_numNodesInUse, (int)m_numMPINodes, m_multiHost ? "multiple hosts" : "a single host",
